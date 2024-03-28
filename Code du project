@@ -1,0 +1,349 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+
+public class Program
+{
+    private static List<Docteur> docteurs = new List<Docteur>();
+    private static List<Patient> patients = new List<Patient>();
+    private static List<Medecin> medecins = new List<Medecin>();
+
+    public static void Main()
+    {
+        InitialiserDocteurs();
+        InitialiserPatients();
+        InitialiserMedecins();
+
+        Console.WriteLine("Êtes-vous un patient (1) ou un médecin (2) ?");
+        string choixUtilisateur = Console.ReadLine();
+
+        if (choixUtilisateur == "1")
+        {
+            Console.WriteLine("Veuillez entrer votre nom :");
+            string nomPatient = Console.ReadLine();
+            Patient patient = patients.Find(p => p.Nom == nomPatient);
+
+            if (patient != null)
+            {
+                Console.WriteLine("Voulez-vous prendre un rendez-vous (1) ou consulter votre dossier médical (2) ?");
+                string choixPatient = Console.ReadLine();
+
+                if (choixPatient == "1")
+                {
+                    RendezVous rendezVous = PatientSelectionneRendezVous(patient);
+
+                    Console.WriteLine("Détails du rendez-vous :");
+                    Console.WriteLine($"Patient : {rendezVous.Patient.Nom}");
+                    Console.WriteLine($"Docteur : {rendezVous.Docteur.Nom}");
+                    Console.WriteLine($"Date : {rendezVous.DateRendezVous.ToString("f", CultureInfo.GetCultureInfo("fr-FR"))}");
+                    Console.WriteLine($"Statut : {rendezVous.Statut}");
+                }
+                else if (choixPatient == "2")
+                {
+                    ConsulterDossierMedical(patient);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Patient non trouvé.");
+            }
+        }
+        else if (choixUtilisateur == "2")
+        {
+            Console.WriteLine("Veuillez entrer votre identifiant de médecin :");
+            string identifiantMedecin = Console.ReadLine();
+            Console.WriteLine("Veuillez entrer votre mot de passe :");
+            string motDePasseMedecin = Console.ReadLine();
+
+            Medecin medecin = AuthentifierMedecin(identifiantMedecin, motDePasseMedecin);
+
+            if (medecin != null)
+            {
+                Console.WriteLine("Identifiant et mot de passe valides.");
+
+                Console.WriteLine("Veuillez entrer le nom du patient à consulter ou à qui écrire une consultation :");
+                string nomPatient = Console.ReadLine();
+
+                Patient patient = patients.Find(p => p.Nom == nomPatient);
+
+                if (patient != null)
+                {
+                    Console.WriteLine("Voulez-vous consulter le dossier médical (1) ou écrire une consultation (2) ?");
+                    string choixMedecin = Console.ReadLine();
+
+                    if (choixMedecin == "1")
+                    {
+                        ConsulterDossierMedical(patient);
+                    }
+                    else if (choixMedecin == "2")
+                    {
+                        EcrireConsultation(medecin, patient);
+                    }
+
+                }
+                else
+                {
+                    Console.WriteLine("Patient non trouvé.");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Identifiant ou mot de passe incorrect.");
+            }
+        }
+    }
+
+    private static RendezVous PatientSelectionneRendezVous(Patient patient)
+    {
+        Console.WriteLine("Veuillez choisir un docteur (entrez le numéro) :");
+        for (int i = 0; i < docteurs.Count; i++)
+        {
+            Console.WriteLine($"{i + 1}. {docteurs[i].Nom} - {docteurs[i].Specialite}");
+        }
+        int choixDocteur = Convert.ToInt32(Console.ReadLine()) - 1;
+        Docteur docteurChoisi = docteurs[choixDocteur];
+
+        Console.WriteLine("Horaires disponibles :");
+        for (int i = 0; i < docteurChoisi.CreneauxDisponibles.Count; i++)
+        {
+            Console.WriteLine($"{i + 1}. {docteurChoisi.CreneauxDisponibles[i].DateHeure.ToString("f", CultureInfo.InvariantCulture)}");
+        }
+        int choixCreneau = Convert.ToInt32(Console.ReadLine()) - 1;
+        CreneauHoraire creneauChoisi = docteurChoisi.CreneauxDisponibles[choixCreneau];
+
+        RendezVous rendezVous = new RendezVous
+        {
+            DateRendezVous = creneauChoisi.DateHeure,
+            Statut = "Planifié",
+            Patient = patient,
+            Docteur = docteurChoisi
+        };
+
+        return rendezVous;
+    }
+
+    private static void ConsulterDossierMedical(Patient patient)
+    {
+        if (patient != null && patient.DossierMedical != null)
+        {
+            Console.WriteLine($"Dossier médical de {patient.Nom}:");
+            foreach (var consultation in patient.DossierMedical.Consultations)
+            {
+                Console.WriteLine($"Date: {consultation.DateConsultation.ToString("d", CultureInfo.InvariantCulture)}, Notes: {consultation.Notes}, Médicament: {consultation.Ordonnance.Medicament}, Dosage: {consultation.Ordonnance.Dosage}, Durée: {consultation.Ordonnance.Duree}");
+            }
+        }
+        else
+        {
+            Console.WriteLine("Dossier médical introuvable.");
+        }
+    }
+
+
+    private static void ConsulterDossierMedical(string identifiantPatient)
+    {
+        Patient patient = patients.Find(p => p.Identifiant == identifiantPatient);
+        if (patient != null && patient.DossierMedical != null)
+        {
+            Console.WriteLine($"Dossier médical de {patient.Nom}:");
+            foreach (var consultation in patient.DossierMedical.Consultations)
+            {
+                Console.WriteLine($"Date: {consultation.DateConsultation.ToString("d", CultureInfo.InvariantCulture)}, Notes: {consultation.Notes}, Médicament: {consultation.Ordonnance.Medicament}, Dosage: {consultation.Ordonnance.Dosage}, Durée: {consultation.Ordonnance.Duree}");
+            }
+        }
+        else
+        {
+            Console.WriteLine("Dossier médical introuvable.");
+        }
+    }
+
+
+
+    private static void EcrireConsultation(Medecin medecin, Patient patient)
+    {
+        Console.WriteLine($"Ecrire consultation pour le patient {patient.Nom}:");
+        Console.WriteLine("Date de la consultation (JJ/MM/AAAA) :");
+        DateTime dateConsultation = DateTime.ParseExact(Console.ReadLine(), "dd/MM/yyyy", CultureInfo.InvariantCulture);
+        string notes = Console.ReadLine();
+        Console.WriteLine("Médicament prescrit :");
+        string medicament = Console.ReadLine();
+        Console.WriteLine("Dosage :");
+        string dosage = Console.ReadLine();
+        Console.WriteLine("Durée du traitement :");
+        string duree = Console.ReadLine();
+
+        patient.AjouterConsultation(new Consultation
+        {
+            DateConsultation = dateConsultation,
+            Notes = notes,
+            Ordonnance = new Ordonnance
+            {
+                Medicament = medicament,
+                Dosage = dosage,
+                Duree = duree
+            }
+        });
+
+        Console.WriteLine("Consultation enregistrée avec succès.");
+    }
+
+    // Méthode pour initialiser les docteurs (déjà fournie)
+    private static void InitialiserDocteurs()
+    {
+        // Initialisation du premier docteur
+        Docteur docteur1 = new Docteur
+        {
+            Nom = "Dr. Legrand",
+            Identifiant = "DL456",
+            Specialite = "Cardiologie",
+            CreneauxDisponibles = new List<CreneauHoraire>()
+        };
+
+        // Créneaux disponibles pour le premier docteur
+        docteur1.CreneauxDisponibles.Add(new CreneauHoraire { DateHeure = new DateTime(2024, 4, 1, 10, 0, 0) });
+        docteur1.CreneauxDisponibles.Add(new CreneauHoraire { DateHeure = new DateTime(2024, 4, 2, 14, 0, 0) });
+
+        // Initialisation du deuxième docteur
+        Docteur docteur2 = new Docteur
+        {
+            Nom = "Dr. Martin",
+            Identifiant = "DM789",
+            Specialite = "Dermatologie",
+            CreneauxDisponibles = new List<CreneauHoraire>()
+        };
+
+        // Créneaux disponibles pour le deuxième docteur
+        docteur2.CreneauxDisponibles.Add(new CreneauHoraire { DateHeure = new DateTime(2024, 4, 1, 9, 0, 0) });
+        docteur2.CreneauxDisponibles.Add(new CreneauHoraire { DateHeure = new DateTime(2024, 4, 3, 11, 0, 0) });
+
+        // Ajout des docteurs à la liste
+        docteurs.Add(docteur1);
+        docteurs.Add(docteur2);
+    }
+
+
+    private static void InitialiserPatients()
+    {
+        // Initialisation du premier patient
+        var patient1 = new Patient
+        {
+            Nom = "Jean Dupont",
+            Identifiant = "JD123",
+            Sexe = "Homme",
+            DateDeNaissance = new DateTime(1980, 1, 1),
+            DossierMedical = new DossierMedical
+            {
+                RecordId = "RM987",
+                Consultations = new List<Consultation>
+            {
+                new Consultation
+                {
+                    DateConsultation = new DateTime(2023, 1, 15),
+                    Notes = "Consultation de routine",
+                    Ordonnance = new Ordonnance
+                    {
+                        Medicament = "Ibuprofène",
+                        Dosage = "200mg",
+                        Duree = "5 jours"
+                    }
+                }
+            }
+            }
+        };
+
+        // Ajout du premier patient à la liste des patients
+        patients.Add(patient1);
+    }
+    private static void InitialiserMedecins()
+    {
+        Medecin medecin1 = new Medecin
+        {
+            Nom = "Dr. Smith",
+            Identifiant = "drsmith123",
+            MotDePasse = "password123"
+        };
+
+        Medecin medecin2 = new Medecin
+        {
+            Nom = "Dr. Johnson",
+            Identifiant = "drjohnson456",
+            MotDePasse = "securepass"
+        };
+
+        // Ajout des médecins à la liste
+        medecins.Add(medecin1);
+        medecins.Add(medecin2);
+    }
+
+    private static Medecin AuthentifierMedecin(string identifiant, string motDePasse)
+    {
+        return medecins.Find(m => m.Identifiant == identifiant && m.MotDePasse == motDePasse);
+    }
+}
+
+public class RendezVous
+{
+    public DateTime DateRendezVous { get; set; }
+    public string Statut { get; set; }
+    public Patient Patient { get; set; }
+    public Docteur Docteur { get; set; }
+}
+
+public class Docteur
+{
+    public string Nom { get; set; }
+    public string Identifiant { get; set; }
+    public string Specialite { get; set; }
+    public List<CreneauHoraire> CreneauxDisponibles { get; set; } = new List<CreneauHoraire>();
+}
+
+public class CreneauHoraire
+{
+    public DateTime DateHeure { get; set; }
+}
+
+public class Consultation
+{
+    public DateTime DateConsultation { get; set; }
+    public string Notes { get; set; }
+    public Ordonnance Ordonnance { get; set; }
+}
+
+public class Ordonnance
+{
+    public string Medicament { get; set; }
+    public string Dosage { get; set; }
+    public string Duree { get; set; }
+}
+
+public class Patient
+{
+    public string Nom { get; set; }
+    public string Identifiant { get; set; }
+    public string Sexe { get; set; }
+    public DateTime DateDeNaissance { get; set; }
+    public DossierMedical DossierMedical { get; set; }
+
+    public void AjouterConsultation(Consultation nouvelleConsultation)
+    {
+        if (DossierMedical == null)
+        {
+            DossierMedical = new DossierMedical();
+        }
+
+        DossierMedical.Consultations.Add(nouvelleConsultation);
+    }
+}
+
+public class DossierMedical
+{
+    public string RecordId { get; set; }
+    public DateTime DateCreation { get; set; } = DateTime.Now;
+    public List<Consultation> Consultations { get; set; } = new List<Consultation>();
+}
+
+public class Medecin
+{
+    public string Nom { get; set; }
+    public string Identifiant { get; set; }
+    public string MotDePasse { get; set; }
+}
